@@ -1,0 +1,24 @@
+.tasks{
+
+    display: flex;
+    justify-content: space-between;
+    flex-direction: column;
+    align-items: stretch;
+
+}
+
+.task_action{
+    display: flex;
+    justify-content: flex-end;
+}
+
+.task_delete{
+    margin-left: 3%;
+}
+
+.motivate{
+    color: azure;
+    font-family: C059;
+    text-align: center;
+    margin: auto;
+}
