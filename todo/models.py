@@ -10,7 +10,7 @@ class Task(models.Model):
     state = models.IntegerField(default=0)
 
     def __str__(self):
-        return self.name
+        return str({'id':self.id,'name':self.name,'description': self.description,'state':self.state})
 
     def __repr__(self):
         return json.dumps({
