@@ -1,27 +1,67 @@
-from django.shortcuts import render
-from dns.update import Update
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
-from .models import Task
-from . import serializers
-from rest_framework.viewsets import ViewSet
+from rest_framework.viewsets import ViewSet, ModelViewSet
+from rest_framework.decorators import api_view
 
+from rest_framework import status
+from rest_framework import filters
+from rest_framework import permissions
+from .models import Task ,movie
+from .serializers import TaskSerializer,MovieSerializer
+
+#TODO:AUTH#3
+from rest_framework.decorators import permission_classes, authentication_classes
+from rest_framework.permissions import IsAuthenticated, BasePermission
+from rest_framework.authentication import TokenAuthentication
 # Create your views here.
+
+class CanDeleteTask(BasePermission):
+
+    def has_permission(self, request, view):
+        print(f"user group => {request.user.groups}")
+        if request.user.groups.filter(name='Can-Delete').exists():
+            return True
+        return False
+
+
+class UserPermissions(BasePermission):
+    def has_permission(self, request, view):
+        """this permission simply work to make sure that
+            any user try to access this view (task) must me authenticated
+            (logged in)
+        """
+        return request.user.is_authenticated
+
+    def has_object_permission(self, request, view, obj):
+        """this permission check in 2 steps :
+        1- check the request method if from safe methods[get,option] return true
+            which allow user to see tasks created by another users but just see
+            no edit no delete no actions
+        2- if the request method not in safe methods so it mean the request need to
+            do some action like edit or delete , now it's turn on to see if the target
+            object belongs to the request user or not
+        """
+        return True if request.method in permissions.SAFE_METHODS else obj.created_by.id==request.user.id
+
 
 class FetchTask(APIView):
     """test api views"""
     # this help to construct input form as fields type
-    serializer_class = serializers.TaskSerializer
+    serializer_class = TaskSerializer
+    filter_backends=(filters.SearchFilter,)
+    search_fields=('name','state')
+    # permission_classes=[IsAuthenticated]
+    # authentication_classes = [TokenAuthentication]
 
+    # @permission_classes()
     def get(self, request, format=None):
         """return all tasks"""
-        all_date = Task.get_all_tasks()
-        return Response({'Tasks': all_date})
+        all_date = TaskSerializer(instance=Task.objects.all(),many=True)
+        return Response({'Tasks': all_date.data})
 
     def post(self, request):
         """Handles Post Request to add task"""
-        task = serializers.TaskSerializer(data=request.data)
+        task = TaskSerializer(data=request.data)
         if task.is_valid():
             task.save()
             return Response({'message': task.data})
@@ -32,15 +72,6 @@ class FetchTask(APIView):
         """Handles Update operation"""
         return Response({'method':'put'})
 
-    # def patch(self,request,pk=None):
-    #     """Handle Partial update process"""
-    #     task_id=request.data
-    #     task=Task.objects.get(pk=task_id)
-    #     new_state=0 if task.state else 1
-    #     updated_task=serializers.TaskSerializer(instance=task,data={'state':new_state},partial=True)
-    #     updated_task.save() if updated_task.is_valid() else print('not valid')
-    #     return Response({'message':updated_task.data})
-
     def delete(self,request,pk=None):
         """it seem to be clear what's it's job"""
         task_id=request.data
@@ -49,7 +80,9 @@ class FetchTask(APIView):
         return Response({'method':'delete'})
 
 class PutTask(APIView):
-    serializer_class = serializers.TaskSerializer
+    serializer_class = TaskSerializer
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('name', 'state')
     def get(self, request, format=None):
         """return all tasks"""
         all_date = Task.get_all_tasks()
@@ -61,48 +94,66 @@ class PutTask(APIView):
         """Handles Update operation"""
         return Response({'method':'putx'})
 
-class TaskView(ViewSet):
+class TaskView(ModelViewSet):
     """test view set """
-    serializer_class = serializers.TaskSerializer
-    def list(self,request):
-        """list all objects"""
-        all_date = Task.get_all_tasks()
-        return Response({'message':all_date})
+    serializer_class = TaskSerializer
+    queryset = Task.objects.all()
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name']
+    permission_classes = (UserPermissions,)
 
-    def create(self,request):
-        task = serializers.TaskSerializer(data=request.data)
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+        print(serializer,'here from perform create')
+
+    class SubTaskView(ViewSet):
+        def list(self, request):
+            """list all objects"""
+            data=Task.objects.all()
+            all_date = TaskSerializer(instance=data,many=True)
+            return Response({'message from sub task': all_date.data})
+
+
+@api_view(['GET'])
+# @authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated]) #TODO:AUTH#4
+def get_tasks(request):
+        print(request.user)
+        all_date = MovieSerializer(instance=movie.objects.all(),many=True)
+        return Response({'token': all_date.data})
+
+
+@api_view(['POST'])
+def add_tasks(request):
+        task=TaskSerializer(data=request.data)
         if task.is_valid():
             task.save()
-            return Response({'message': task.data})
-        else:
-            return Response(task.errors, status=status.HTTP_400_BAD_REQUEST)
+        all_date = TaskSerializer(instance=Task.objects.all(),many=True)
+        return Response({'Tasks': all_date.data})
 
-    def retrieve(self,request,pk=None):
-        """Handle get object by id"""
-        print(pk)
-        task=Task.objects.get(id=pk)
-        task_result={'id':task.id,'name':task.name,'description': task.description,'state':task.state}
+@api_view(['PUT','PATCH'])
+def update_tasks(request,pk):
+    task=Task.objects.get(id=pk)
+    if request.method=='PUT':
+        result=TaskSerializer(instance=task,data=request.data )
+    elif request.method=='PATCH':
+        result=TaskSerializer(instance=task,data=request.data ,partial=True)
+    if result.is_valid():
+        result.save()
+    return Response({'task':result.data})
 
-        return Response({"task":task_result})
+@api_view(['POST'])
+def add_movie(request):
+    movie=MovieSerializer(data=request.data)
+    if movie.is_valid():
+        movie.save()
+        return Response({'message':movie.data})
+    else:
+        return Response({'message':status.HTTP_400_BAD_REQUEST})
 
-    def update(self,request, pk=None):
-        """Handles updating an object"""
-
-        return Response({'http_method':'PUT'})
-
-    def partial_update(self,request,pk=None):
-        """Handle partial update"""
-        task=Task.objects.get(pk=pk)
-        new_state=0 if task.state else 1
-        updated_task=serializers.TaskSerializer(instance=task,data={'state':new_state},partial=True)
-        updated_task.save() if updated_task.is_valid() else print('not valid')
-        return Response({'message':updated_task.data})
-        # return Response({'http_method': 'PATCH'})
-
-    def destroy(self,request,pk=None):
-        """Handle delete object"""
-        task=Task.objects.get(pk=pk)
-        task.delete()
-        delete_result={'id':task.id,'name':task.name,'description': task.description,'state':task.state}
-        return Response({'message': delete_result})
-
+@api_view(['DELETE'])
+@permission_classes([CanDeleteTask])
+def delete_task(request,pk):
+    task=Task.objects.filter(pk=pk)
+    task.delete()
+    return Response({"message":TaskSerializer(instance=Task.objects.all(),many=True).data})

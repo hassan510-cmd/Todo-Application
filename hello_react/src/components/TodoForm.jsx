@@ -53,6 +53,21 @@ export default class TodoForm extends Component {
         })
     }
 
+    UpdateDataAfterDelete=(pk)=>{
+        const {data:current_data}=this.state
+        console.log(current_data)
+        for (var item of current_data){
+            if (item.id == pk){
+                console.log(item)
+                current_data.splice(current_data.indexOf(item),1)
+                console.log(current_data)
+                this.setState({
+                    data:[...current_data]
+                })
+            }
+        }
+    }
+
 
     render() {
 
@@ -79,6 +94,7 @@ export default class TodoForm extends Component {
                             desc={rec.description}
                             pk={rec.id}
                             state={rec.state}
+                            UpdateDataAfterDelete={this.UpdateDataAfterDelete}
                         
                         />
                     )}

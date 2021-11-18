@@ -1,6 +1,7 @@
 from django.db import models
 import json
-
+from profiels.models import UserProfile
+from django.conf import settings
 
 # Create your models here.
 
@@ -8,36 +9,35 @@ class Task(models.Model):
     name = models.CharField(max_length=30)
     description = models.CharField(max_length=1000)
     state = models.IntegerField(default=0)
+    created_by=models.ForeignKey(to=settings.AUTH_USER_MODEL,on_delete=models.CASCADE)
+    def __str__(self):
+        return self.name
+
+
+class Category(models.Model):
+    name=models.CharField(max_length=30)
 
     def __str__(self):
-        return str({'id':self.id,'name':self.name,'description': self.description,'state':self.state})
+        return self.name
 
-    def __repr__(self):
-        return json.dumps({
-            'id': self.id,
-            'name': self.name,
-            'description': self.description
-            , 'state': self.state
-        })
-    @staticmethod
-    def get_all_tasks():
-        """
-        this method get all tasks object then return list with them
-        [
-        {"id": 1, "name": "task1", "description": "desc1", "state": 0},
-         {"id": 2, "name": "Veda Hayes", "description": "Eos eos voluptas id vel quibusdam odio aut ducimus, sunt fugit, irure magni sed mollitia doloremque .", "state": 0},
-         {"id": 3, "name": "Maryam Vincent", "description": "Dolorem rem in ea tempor molestiae irure molestiae dolores error consequat. Est est eiusmod a tempor.", "state": 0},
-         {"id": 4, "name": "Xanthus Bowers", "description": "Itaque accusantium consequatur dolore omnis amet, iste aliquid laborum. In ut dolore voluptatibus qu.", "state": 0}
-         ]
+class Cast(models.Model):
+    name=models.CharField(max_length=30)
 
-        """
-        all_tasks = Task.objects.all()
-        list_of_tasks_objects = [{'id':task.id,'name':task.name,'description':task.description,'state':task.state} for task in all_tasks]
-        return list_of_tasks_objects
+    def __str__(self):
+        return self.name
+class SharedInfo(models.Model):
+    title=models.CharField(max_length=30)
+    desc=models.TextField(max_length=1000)
+    release_date=models.DateField()
+    categories=models.ManyToManyField(to=Category)
+    cast=models.ManyToManyField(to=Cast)
+    poster_image=models.ImageField(upload_to='movie/posters')
 
+    class Meta:
+        abstract = True
 
-# from todo.models import Task
-#
-# all_tasks = Task.objects.all()
-# [type(json.dump(task)) for task in all_tasks]
-# import json
+class movie(SharedInfo):
+    pass
+
+class series(SharedInfo):
+    pass

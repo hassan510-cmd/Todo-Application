@@ -20,3 +20,13 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+#
+# from todo.models import movie
+# from todo.serializers import MovieSerializer
+#
+# movies=movie.objects.all()
+# movies
+# movie.objects.get(pk=1).categories.name
+# serialmovie=MovieSerializer(instance=movies,many=True)
+# serialmovie.Category

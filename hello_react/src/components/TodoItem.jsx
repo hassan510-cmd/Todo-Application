@@ -5,36 +5,36 @@ export default class TodoItem extends Component {
 
     constructor(props) {
         super(props)
-    
-        this.state = {
-            task_state:0,
+         this.state = {
+            task_state:this.props.state,
             btn_state:'',
             text_style:"",
-            task_style:{'display': 'block'},
-            
         }
         this.url="http://127.0.0.1:8000"
     }
     
+
     ToggleTaskState = (pk) => {
         axios.patch(`${this.url}/tasks/list/${pk}/`).then(response=>{
-            let new_state=response.data.message.state ? 0 :1
+            console.log(response.data.message.state)
+            let new_state=response.data.message.state ? 1 :0
+            console.log(new_state)
             this.setState({
-                text_style:new_state ?{textDecoration: 'none'} :{textDecoration: 'line-through'},
+                text_style:new_state ?{textDecoration: 'line-through'} :{textDecoration: 'none'},
                 task_state:new_state,
-                btn_state:new_state ?"Done" :"Undo"
+                btn_state:new_state ?"Undo" :"Done"
             })
         })
-        
-    }
+     }
 
     DeleteTask=(pk)=>{
-        axios.delete(`${this.url}/tasks/list/${pk}/`)
-        this.setState({
-            task_style:{'display': 'none'}
+        axios.delete(`${this.url}/tasks/list/${pk}/`).then(
+            this.props.UpdateDataAfterDelete(pk)
+        ).catch(error=>{
+            console.log(error)
         })
-    }
 
+    }
 
     componentWillMount=()=>{
         this.setState({
@@ -49,7 +49,7 @@ export default class TodoItem extends Component {
     render() {
         return (
 
-            <div className='mb-3' style={this.state.task_style}>
+            <div className='mb-3' >
                 <div className=" shadow p-1  bg-body rounded-3 border border-primary">
                     <div className="card-body">
                         

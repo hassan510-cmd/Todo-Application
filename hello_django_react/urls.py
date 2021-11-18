@@ -16,9 +16,15 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path , include
 from django.views.generic import TemplateView
+from . import settings
 urlpatterns = [
     path('admin/', admin.site.urls),
     # todo
     path('',TemplateView.as_view(template_name='index.html')),
-    path('tasks/',include('todo.urls'))
+    path('tasks/',include('todo.urls')),\
+    path('profiles/',include('profiels.urls'))
 ]
+
+if settings.DEBUG:
+    from django.conf.urls.static import static
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
